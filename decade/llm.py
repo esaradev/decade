@@ -46,28 +46,43 @@ def _call_anthropic(system: str, user: str, model: str, max_tokens: int) -> str:
     return ""
 
 
+OPENROUTER_MODEL_MAP = {
+    "claude-sonnet-4-20250514": "anthropic/claude-sonnet-4",
+    "claude-haiku-4-5-20251001": "anthropic/claude-haiku-4-5",
+}
+
+
 def _call_openrouter(system: str, user: str, model: str, max_tokens: int) -> str:
     import json
     import urllib.request
+    import urllib.error
     key = os.environ["OPENROUTER_API_KEY"]
+    or_model = OPENROUTER_MODEL_MAP.get(model, f"anthropic/{model}")
     body = json.dumps({
-        "model": model,
+        "model": or_model,
         "max_tokens": max_tokens,
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
     }).encode()
-    req = urllib.request.Request(
-        "https://openrouter.ai/api/v1/chat/completions",
-        data=body,
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-    )
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
     for attempt in range(MAX_RETRIES):
         try:
-            resp = urllib.request.urlopen(req, timeout=60)
+            req = urllib.request.Request(
+                "https://openrouter.ai/api/v1/chat/completions",
+                data=body, headers=headers,
+            )
+            resp = urllib.request.urlopen(req, timeout=120)
             data = json.loads(resp.read())
             return data["choices"][0]["message"]["content"]
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", errors="replace")[:500] if hasattr(e, "read") else str(e)
+            if attempt == MAX_RETRIES - 1:
+                raise RuntimeError(f"OpenRouter {e.code}: {err_body}") from e
+            delay = RETRY_DELAYS[attempt]
+            logger.warning("OpenRouter %d (attempt %d): %s, retrying in %ds", e.code, attempt + 1, err_body[:200], delay)
+            time.sleep(delay)
         except Exception as e:
             if attempt == MAX_RETRIES - 1:
                 raise

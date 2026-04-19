@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decade</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>decade</h1>
+  <div id="stats"></div>
+  <div id="filters">
+    <button class="filter active" data-type="all">all</button>
+    <button class="filter" data-type="persona">personas</button>
+    <button class="filter" data-type="event">events</button>
+    <button class="filter" data-type="entity">entities</button>
+  </div>
+</header>
+<div id="container">
+  <svg id="graph"></svg>
+  <aside id="panel">
+    <div id="panel-content">click a node to read</div>
+  </aside>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

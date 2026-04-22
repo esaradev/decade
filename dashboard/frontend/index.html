@@ -6,36 +6,21 @@
 <title>Decade</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
-<script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
 <div id="app">
-  <svg id="graph"></svg>
-
-  <div id="controls">
-    <div id="search-wrap">
-      <input id="search" type="text" placeholder="search nodes..." spellcheck="false">
+  <header id="masthead">
+    <div class="decade-title" id="decade-label"></div>
+  </header>
+  <main id="timeline"></main>
+  <div id="overlay" class="hidden">
+    <div id="overlay-inner">
+      <button id="overlay-close" type="button">&larr; back</button>
+      <div id="overlay-content"></div>
     </div>
-    <div id="filter-row">
-      <button class="chip active" data-type="all">all</button>
-      <button class="chip" data-type="persona"><span class="dot" style="background:var(--persona)"></span>personas</button>
-      <button class="chip" data-type="event"><span class="dot" style="background:var(--event)"></span>events</button>
-      <button class="chip" data-type="entity"><span class="dot" style="background:var(--entity)"></span>entities</button>
-      <button class="chip" data-type="entry"><span class="dot" style="background:var(--entry)"></span>entries</button>
-    </div>
-    <div id="stats"></div>
   </div>
-
-  <div id="title-bar">
-    <span class="logo">decade</span>
-  </div>
-
-  <aside id="panel" class="closed">
-    <button id="panel-close" type="button">&#x2715;</button>
-    <div id="panel-content"></div>
-  </aside>
 </div>
 <script src="/static/app.js"></script>
 </body>

@@ -6,20 +6,63 @@
 <title>Decade</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
-<svg id="graph"></svg>
-<div id="hud">
-  <div id="hud-title">decade</div>
-  <input id="search" type="text" placeholder="search" spellcheck="false">
-</div>
+
+<!-- ── section 1: intro ── -->
+<section id="intro">
+  <div id="intro-particles"></div>
+  <div id="intro-content">
+    <div id="intro-label">an open-source simulation</div>
+    <h1 id="intro-title">decade</h1>
+    <p id="intro-sub">pick a decade. spawn a cast of characters. watch them live through history.</p>
+    <div id="intro-desc">
+      AI personas from any era react to real events in their own voice.
+      Their diary entries feed into a shared knowledge graph that connects
+      people, events, and ideas across the simulation.
+    </div>
+    <button id="intro-enter" type="button">explore the simulation</button>
+  </div>
+  <div id="scroll-hint">scroll</div>
+</section>
+
+<!-- ── section 2: dashboard ── -->
+<section id="dashboard">
+  <div id="dash-inner">
+    <div id="dash-header">
+      <div id="dash-era"></div>
+      <div id="dash-summary"></div>
+    </div>
+    <div id="dash-cast">
+      <div id="dash-cast-label">the cast</div>
+      <div id="persona-cards"></div>
+    </div>
+    <div id="dash-timeline">
+      <div id="dash-timeline-label">events simulated</div>
+      <div id="timeline-track"></div>
+    </div>
+    <button id="dash-enter" type="button">enter the graph</button>
+  </div>
+</section>
+
+<!-- ── section 3: graph ── -->
+<section id="graph-section">
+  <svg id="graph"></svg>
+  <div id="hud">
+    <input id="search" type="text" placeholder="search" spellcheck="false">
+  </div>
+  <button id="back-to-dash" type="button">overview</button>
+</section>
+
+<!-- ── detail overlay ── -->
 <div id="detail" class="hidden">
   <button id="detail-close" type="button">&times;</button>
   <div id="detail-inner"></div>
 </div>
+
 <script src="/static/app.js"></script>
 </body>
 </html>

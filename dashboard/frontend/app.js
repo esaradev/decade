@@ -1,37 +1,41 @@
-const PERSONA_COLORS = {};
-const PALETTE = ['p1', 'p2', 'p3', 'p1', 'p2', 'p3'];
+const PERSONA_CLASSES = {};
+const PERSONA_NAMES = ['p1', 'p2', 'p3'];
+const HEAVY_EVENTS = new Set([
+  'jfk assassinated', 'kennedy assassinated', 'mlk assassinated',
+  'bloody sunday', 'detroit riots', 'cuban missile crisis',
+]);
+
 let allEntries = [];
-let graphData = null;
 
 async function init() {
-  const resp = await fetch('/graph');
-  graphData = resp.ok ? await resp.json() : { nodes: [], links: [], stats: {} };
+  const graph = await (await fetch('/graph')).json();
+  const personas = graph.nodes.filter(n => n.type === 'persona');
+  personas.forEach((p, i) => { PERSONA_CLASSES[p.label] = PERSONA_NAMES[i % 3]; });
 
-  const personas = graphData.nodes.filter(n => n.type === 'persona');
-  personas.forEach((p, i) => { PERSONA_COLORS[p.label] = PALETTE[i % PALETTE.length]; });
+  const entryNodes = graph.nodes.filter(n => n.type === 'entry');
+  const fetches = entryNodes.map(n =>
+    fetch(`/entry/${encodeURIComponent(n.id)}`).then(r => r.ok ? r.json() : null).catch(() => null)
+  );
+  allEntries = (await Promise.all(fetches)).filter(Boolean);
 
-  const entryNodes = graphData.nodes.filter(n => n.type === 'entry');
-  for (const node of entryNodes) {
-    try {
-      const r = await fetch(`/entry/${encodeURIComponent(node.id)}`);
-      if (r.ok) allEntries.push(await r.json());
-    } catch (e) { /* skip */ }
-  }
-
-  const events = [...new Set(allEntries.map(e => e.event_date))].sort();
-  const decade = events.length > 0 ? events[0].substring(0, 3) + '0s' : '';
-  document.getElementById('decade-label').textContent = decade ? `${decade}` : 'decade';
-
-  renderTimeline(events);
-
-  document.getElementById('overlay-close').addEventListener('click', closeOverlay);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeOverlay(); });
+  build();
+  observe();
 }
 
-function renderTimeline(eventDates) {
-  const timeline = document.getElementById('timeline');
-  timeline.innerHTML = '';
+function era(date) {
+  const y = parseInt(date, 10);
+  if (y <= 1963) return 'early';
+  if (y <= 1966) return 'mid';
+  return 'late';
+}
 
+function weight(title) {
+  const t = title.toLowerCase();
+  return HEAVY_EVENTS.has(t) || t.includes('assassin') || t.includes('riot') || t.includes('bloody') ? 'heavy' : 'normal';
+}
+
+function build() {
+  const container = document.getElementById('scroll-container');
   const byEvent = {};
   allEntries.forEach(e => {
     const key = `${e.event_date}|${e.event_title}`;
@@ -40,134 +44,100 @@ function renderTimeline(eventDates) {
   });
 
   const events = Object.values(byEvent).sort((a, b) => a.date.localeCompare(b.date));
+  if (!events.length) {
+    container.innerHTML = '<div class="spacer"><div class="spacer-year">no entries yet</div></div>';
+    return;
+  }
 
-  events.forEach(event => {
-    const block = document.createElement('div');
-    block.className = 'event-block';
-    block.innerHTML = `
-      <div class="event-header">
-        <span class="event-date">${event.date}</span>
-        <span class="event-title">${event.title}</span>
-      </div>
+  let lastYear = '';
+
+  events.forEach((event, i) => {
+    const year = event.date.substring(0, 4);
+    if (year !== lastYear) {
+      container.appendChild(yearSpacer(year));
+      lastYear = year;
+    }
+
+    const e = era(event.date);
+    const w = weight(event.title);
+
+    const moment = el('div', `moment`, { 'data-era': e, 'data-weight': w });
+    moment.innerHTML = `
+      <div class="moment-date">${event.date}</div>
+      <div class="moment-title">${event.title}</div>
     `;
-
-    const voices = document.createElement('div');
-    voices.className = 'voices';
+    container.appendChild(moment);
 
     event.entries.forEach(entry => {
-      const cls = PERSONA_COLORS[entry.persona] || 'p1';
-      const excerpt = entry.body.split('\n\n').slice(0, 2).join('\n\n');
-      const entities = (entry.entities || []).slice(0, 6);
-      const card = document.createElement('div');
-      card.className = 'voice';
-      card.dataset.file = entry.file;
-      card.dataset.persona = entry.persona;
-      card.innerHTML = `
-        <div class="voice-name ${cls}">${entry.persona}</div>
-        <div class="voice-excerpt">${excerpt}</div>
-        ${entities.length ? `<div class="voice-entities">${entities.map(e =>
-          `<span data-entity="${e}">${e}</span>`
-        ).join(' / ')}</div>` : ''}
+      const cls = PERSONA_CLASSES[entry.persona] || 'p1';
+      const paragraphs = entry.body.split('\n\n').map(p => `<p>${esc(p.trim())}</p>`).join('');
+      const entities = (entry.entities || []).slice(0, 8).join('  /  ');
+
+      const section = el('div', 'voice-section', { 'data-era': e, 'data-weight': w });
+      section.innerHTML = `
+        <div class="voice-who" style="color: var(--${cls})">${entry.persona}</div>
+        <div class="voice-body">${paragraphs}</div>
+        ${entities ? `<div class="voice-entities">${entities}</div>` : ''}
       `;
-      card.addEventListener('click', () => openEntry(entry));
-      voices.appendChild(card);
+      container.appendChild(section);
+
+      if (entry !== event.entries[event.entries.length - 1]) {
+        container.appendChild(el('div', '', { style: 'height: 6vh' }));
+      }
     });
 
-    block.appendChild(voices);
-    timeline.appendChild(block);
-  });
-
-  timeline.addEventListener('mouseenter', handleEntityHover, true);
-  timeline.addEventListener('mouseleave', handleEntityLeave, true);
-}
-
-function handleEntityHover(e) {
-  const span = e.target.closest('.voice-entities span');
-  if (!span) return;
-  const entity = span.dataset.entity;
-  if (!entity) return;
-
-  const matching = new Set();
-  allEntries.forEach(entry => {
-    if ((entry.entities || []).some(ent => ent.toLowerCase() === entity.toLowerCase())) {
-      matching.add(entry.file);
+    if (i < events.length - 1) {
+      container.appendChild(el('div', '', { style: 'height: 12vh' }));
+      container.appendChild(rule());
+      container.appendChild(el('div', '', { style: 'height: 12vh' }));
     }
   });
 
-  document.getElementById('timeline').classList.add('entity-highlight');
-  document.querySelectorAll('.voice').forEach(v => {
-    if (matching.has(v.dataset.file)) {
-      v.classList.add('highlighted');
-    } else {
-      v.classList.remove('highlighted');
-    }
-  });
-}
-
-function handleEntityLeave(e) {
-  const span = e.target.closest('.voice-entities span');
-  if (span) return;
-  document.getElementById('timeline').classList.remove('entity-highlight');
-  document.querySelectorAll('.voice').forEach(v => v.classList.remove('highlighted'));
-}
-
-function openEntry(entry) {
-  const cls = PERSONA_COLORS[entry.persona] || 'p1';
-  const paragraphs = entry.body.split('\n\n').map(p => `<p>${p.trim()}</p>`).join('');
-  const entities = entry.entities || [];
-  const content = document.getElementById('overlay-content');
-  content.innerHTML = `
-    <div class="full-persona ${cls}">${entry.persona}</div>
-    <div class="full-event">${entry.event_date}</div>
-    <div class="full-title">${entry.event_title}</div>
-    <div class="full-body">${paragraphs}</div>
-    ${entities.length ? `
-      <div class="full-entities">
-        <div class="full-entities-label">entities</div>
-        <div class="full-entities-list">
-          ${entities.map(e => `<span class="full-entity" data-entity="${e}">${e}</span>`).join('')}
-        </div>
-      </div>
-    ` : ''}
+  const ending = el('div', 'ending');
+  ending.innerHTML = `
+    <div class="ending-count">${allEntries.length}</div>
+    <div class="ending-line">voices across a decade</div>
   `;
+  container.appendChild(ending);
+}
 
-  content.querySelectorAll('.full-entity').forEach(el => {
-    el.addEventListener('click', () => {
-      closeOverlay();
-      setTimeout(() => highlightEntity(el.dataset.entity), 350);
+function observe() {
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) e.target.classList.add('visible');
     });
-  });
+  }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
 
-  document.getElementById('overlay').classList.remove('hidden');
-  document.getElementById('overlay').scrollTop = 0;
-  document.body.style.overflow = 'hidden';
+  document.querySelectorAll('.moment, .voice-section, .spacer-year, .ending').forEach(el => io.observe(el));
 }
 
-function closeOverlay() {
-  document.getElementById('overlay').classList.add('hidden');
-  document.body.style.overflow = '';
+function yearSpacer(year) {
+  const s = el('div', 'spacer');
+  const y = el('div', 'spacer-year');
+  y.textContent = year;
+  s.appendChild(y);
+  return s;
 }
 
-function highlightEntity(entity) {
-  const matching = new Set();
-  allEntries.forEach(entry => {
-    if ((entry.entities || []).some(e => e.toLowerCase() === entity.toLowerCase())) {
-      matching.add(entry.file);
-    }
-  });
-
-  document.getElementById('timeline').classList.add('entity-highlight');
-  document.querySelectorAll('.voice').forEach(v => {
-    v.classList.toggle('highlighted', matching.has(v.dataset.file));
-  });
-
-  const first = document.querySelector('.voice.highlighted');
-  if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-  setTimeout(() => {
-    document.getElementById('timeline').classList.remove('entity-highlight');
-    document.querySelectorAll('.voice').forEach(v => v.classList.remove('highlighted'));
-  }, 3000);
+function rule() {
+  return el('div', 'voice-rule');
 }
+
+function el(tag, className, attrs) {
+  const e = document.createElement(tag);
+  if (className) e.className = className;
+  if (attrs) Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+  return e;
+}
+
+function esc(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+
+document.documentElement.style.setProperty('--p1', '#8b9bb5');
+document.documentElement.style.setProperty('--p2', '#b5a07a');
+document.documentElement.style.setProperty('--p3', '#7aaa8e');
 
 init();

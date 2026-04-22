@@ -4,24 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Decade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
-<header>
-  <h1>decade</h1>
-  <div id="stats"></div>
-  <div id="filters">
-    <button class="filter active" data-type="all">all</button>
-    <button class="filter" data-type="persona">personas</button>
-    <button class="filter" data-type="event">events</button>
-    <button class="filter" data-type="entity">entities</button>
-  </div>
-</header>
-<div id="container">
+<div id="app">
   <svg id="graph"></svg>
-  <aside id="panel">
-    <div id="panel-content">click a node to read</div>
+
+  <div id="controls">
+    <div id="search-wrap">
+      <input id="search" type="text" placeholder="search nodes..." spellcheck="false">
+    </div>
+    <div id="filter-row">
+      <button class="chip active" data-type="all">all</button>
+      <button class="chip" data-type="persona"><span class="dot" style="background:var(--persona)"></span>personas</button>
+      <button class="chip" data-type="event"><span class="dot" style="background:var(--event)"></span>events</button>
+      <button class="chip" data-type="entity"><span class="dot" style="background:var(--entity)"></span>entities</button>
+      <button class="chip" data-type="entry"><span class="dot" style="background:var(--entry)"></span>entries</button>
+    </div>
+    <div id="stats"></div>
+  </div>
+
+  <div id="title-bar">
+    <span class="logo">decade</span>
+  </div>
+
+  <aside id="panel" class="closed">
+    <button id="panel-close" type="button">&#x2715;</button>
+    <div id="panel-content"></div>
   </aside>
 </div>
 <script src="/static/app.js"></script>
